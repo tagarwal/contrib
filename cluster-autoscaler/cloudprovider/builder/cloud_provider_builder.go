@@ -23,6 +23,7 @@ import (
 	"k8s.io/contrib/cluster-autoscaler/cloudprovider/azure"
 	"k8s.io/contrib/cluster-autoscaler/cloudprovider/gce"
 	"os"
+	"k8s.io/contrib/cluster-autoscaler/cloudprovider/obmcs"
 )
 
 // CloudProviderBuilder builds a cloud provider from all the necessary parameters including the name of a cloud provider e.g. aws, gce
@@ -109,6 +110,32 @@ func (b CloudProviderBuilder) Build(nodeGroupsFlag []string) cloudprovider.Cloud
 			glog.Fatalf("Failed to create Azure Manager: %v", err)
 		}
 		cloudProvider, err = azure.BuildAzureCloudProvider(azureManager, nodeGroupsFlag)
+		if err != nil {
+			glog.Fatalf("Failed to create Azure cloud provider: %v", err)
+		}
+	}
+
+	if b.cloudProviderFlag == "sparta" {
+		glog.Info("Am in sparta")
+		var obmcsManager *obmcs.ObmcsManager
+		var obmcsError error
+		if b.cloudConfig != "" {
+			glog.Info("Creating Oracle Bare Metal Manager using cloud-config file: %v", b.cloudConfig)
+			config, fileErr := os.Open(b.cloudConfig)
+			if fileErr != nil {
+				glog.Fatalf("Couldn't open cloud provider configuration %s: %#v", b.cloudConfig, err)
+			}
+			defer config.Close()
+			obmcsManager, obmcsError = obmcs.CreateObmcsManager(config)
+		} else {
+			glog.Info("Creating Oracle Bare Metal Manager with default configuration.")
+			obmcsManager, obmcsError = obmcs.CreateObmcsManager(nil)
+		}
+		if obmcsError != nil {
+			glog.Fatalf("Failed to create Oracle Bare Metal Manager: %v", err)
+		}
+		glog.Info("the node flag passed is ", nodeGroupsFlag)
+		cloudProvider, err = obmcs.BuildObmcsCloudProvider(obmcsManager,nodeGroupsFlag)
 		if err != nil {
 			glog.Fatalf("Failed to create Azure cloud provider: %v", err)
 		}

@@ -1,21 +1,26 @@
-# Copyright 2016 The Kubernetes Authors. All rights reserved
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-FROM gcr.io/google_containers/ubuntu-slim:0.1
-MAINTAINER Marcin Wielgus "mwielgus@google.com"
+FROM oraclelinux:7.3
+MAINTAINER Trilok Agarwal "trilok.agarwal@oracle.com"
 
 ADD cluster-autoscaler cluster-autoscaler
 ADD run.sh run.sh
+
+COPY bmkops/epel.repo /etc/yum.repos.d/epel.repo
+
+RUN yum update -y python
+RUN yum install -y python-pip python-devel openssl-devel gcc
+RUN pip install --upgrade virtualenv pip
+
+COPY bmkops /bmkops
+WORKDIR /bmkops
+
+RUN virtualenv venv
+
+RUN . venv/bin/activate
+
+RUN pip install -e .
+
+RUN bmkops --help
+
+WORKDIR /
 
 CMD ./run.sh
